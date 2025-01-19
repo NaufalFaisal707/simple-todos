@@ -1,119 +1,91 @@
-import {
-  Form,
-  MetaFunction,
-  useLoaderData,
-  useNavigation,
-} from "@remix-run/react";
-import { ClipboardList, Plus, Trash2 } from "lucide-react";
-import { useRef } from "react";
-import { twMerge } from "tailwind-merge";
+import type { MetaFunction } from "@remix-run/node";
+import { Clipboard, ClipboardList, Plus, SearchX } from "lucide-react";
+import { Suspense, useState } from "react";
+import Container2xl from "~/components/container-2xl";
+import CreateTodo from "~/components/create-todo";
 import { Button } from "~/components/ui/button";
-import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
-import { ScrollArea } from "~/components/ui/scroll-area";
-import { db } from "~/db/db.server";
-import { Todos } from "~/db/db.todos";
+import { cn } from "~/lib/utils";
+import { getTodos } from "~/db";
+import { Await, useAsyncValue } from "@remix-run/react";
 
 export const meta: MetaFunction = () => {
-  return [{ title: "Todos App" }];
+  return [{ title: "Todos" }];
 };
 
-export const loader = async () => {
-  return await db.todos.findMany();
-};
+export default function Index() {
+  const [namaTodo, setNamaTodo] = useState("");
 
-export default function IndexTodos() {
-  const loaderData = useLoaderData<Todos[]>();
-  const navigation = useNavigation();
+  const [createTodo, setCreateTodo] = useState(false);
 
-  const formRef = useRef<HTMLFormElement>(null);
+  function AllTodos({ className }: { className?: string }) {
+    const todos = useAsyncValue() as Awaited<ReturnType<typeof getTodos>>;
 
-  if (navigation.state === "idle") {
-    formRef.current?.reset();
-  }
-
-  const RenderTodos = () => {
-    if (loaderData.length === 0) {
+    if (todos.length === 0 && namaTodo) {
       return (
-        <div className="select-none opacity-60 grow flex flex-col items-center justify-center gap-4">
-          <ClipboardList className="size-12" />
-          <h1>Belum ada todo di sini</h1>
+        <div
+          className={cn(
+            className,
+            "grid h-full place-content-center gap-4 text-neutral-400",
+          )}
+        >
+          <SearchX className="mx-auto size-12" />
+          <p>Tidak ditemukan hasil dari pencarian</p>
         </div>
       );
     }
 
-    return (
-      <ScrollArea>
-        <div className="grid flex-wrap gap-4 p-4 overflow-auto">
-          {loaderData.map((m, key) => {
-            return <TodoCard todo_data={m} key={key} />;
-          })}
-        </div>
-      </ScrollArea>
-    );
-  };
-
-  const TodoCard = ({ todo_data }: { todo_data: Todos }) => {
-    return (
-      <div
-        className={twMerge(
-          todo_data.is_checked ? "bg-neutral-100" : "shadow",
-          "rounded-md p-4 flex items-center gap-2 border"
-        )}
-      >
-        <Form action={"/update/" + todo_data.todo_id} method="POST">
-          <Checkbox
-            name="todo_id"
-            checked={todo_data.is_checked}
-            type="submit"
-            title="Tandai selesai"
-          />
-        </Form>
-        <span
-          className={twMerge(
-            todo_data.is_checked ? "italic line-through" : "",
-            "grow text-lg"
+    if (todos.length === 0) {
+      return (
+        <div
+          className={cn(
+            className,
+            "grid h-full place-content-center gap-4 text-neutral-400",
           )}
         >
-          {todo_data.todo}
-        </span>
-        <Form action={"/delete/" + todo_data.todo_id} method="POST">
-          <Button
-            name="todo_id"
-            type="submit"
-            variant="destructive"
-            title="Hapus todo"
-          >
-            <Trash2 />
-          </Button>
-        </Form>
-      </div>
-    );
-  };
+          <Clipboard className="mx-auto size-12" />
+          <p>Belum ada todo di sini</p>
+        </div>
+      );
+    }
+  }
 
   return (
-    <div className="w-svw h-svh max-w-screen-sm mx-auto flex flex-col relative overflow-auto">
-      <div className="sticky top-0 px-4 pt-4 md:flex hidden items-center gap-4 justify-between bg-white">
-        <div className="flex gap-2 truncate select-none items-center">
-          <ClipboardList className="min-w-fit" />
-          <h1 className="text-lg">Todos App</h1>
+    <Container2xl className="flex h-svh flex-col">
+      {/* navbar */}
+      <nav className="sticky top-0 flex select-none justify-between gap-4 bg-white bg-opacity-80 p-4 backdrop-blur">
+        <div className="hidden items-center gap-2 sm:flex">
+          <ClipboardList />
+          <h1 className="text-lg">Todos</h1>
         </div>
-      </div>
 
-      <Form
-        ref={formRef}
-        className="p-4 flex gap-4"
-        method="POST"
-        action="/create"
-      >
-        <Input name="todo" required placeholder="Apa yang kamu todo kan?" />
+        <div className="flex w-full gap-4 sm:w-fit">
+          <Input
+            type="search"
+            title="Cari Todo"
+            placeholder="Cari Todo"
+            className="truncate duration-150 ease-in-out"
+            onChange={({ target }) => setNamaTodo(target.value)}
+          />
 
-        <Button type="submit">
-          <Plus />
-        </Button>
-      </Form>
+          <Button
+            title="Buat Todo"
+            variant="outline"
+            onClick={() => setCreateTodo(!createTodo)}
+          >
+            <Plus />
+          </Button>
+        </div>
 
-      <RenderTodos />
-    </div>
+        <CreateTodo open={createTodo} onOpenChange={setCreateTodo} />
+      </nav>
+
+      {/* All Todos */}
+      <Suspense>
+        <Await resolve={getTodos()}>
+          <AllTodos className="select-none" />
+        </Await>
+      </Suspense>
+    </Container2xl>
   );
 }

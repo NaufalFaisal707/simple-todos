@@ -1,6 +1,5 @@
 import {
   isRouteErrorResponse,
-  Link,
   Links,
   Meta,
   Outlet,
@@ -9,12 +8,15 @@ import {
   useRouteError,
 } from "@remix-run/react";
 import type { LinksFunction } from "@remix-run/node";
-
-import "./tailwind.css";
-import { HeartCrack } from "lucide-react";
-import { Button } from "./components/ui/button";
+import tailwind from "./tailwind.css?url";
+import { HeartCrack, ClipboardX } from "lucide-react";
+import Container2xl from "./components/container-2xl";
 
 export const links: LinksFunction = () => [
+  {
+    rel: "stylesheet",
+    href: tailwind,
+  },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
     rel: "preconnect",
@@ -26,35 +28,6 @@ export const links: LinksFunction = () => [
     href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
   },
 ];
-
-export const ErrorBoundary = () => {
-  const error = useRouteError();
-
-  function getErrorMessage() {
-    if (isRouteErrorResponse(error)) {
-      return error.data;
-    } else if (error instanceof Error) {
-      return error.message;
-    } else {
-      return "Unknown Error";
-    }
-  }
-
-  return (
-    <div className="w-svw h-svh max-w-screen-sm mx-auto flex flex-col relative">
-      <div className="select-none opacity-60 grow flex flex-col items-center justify-center gap-4">
-        <HeartCrack className="size-12" />
-        <h1>Aplikasi Rusak!</h1>
-        <p>{getErrorMessage()}</p>
-        <Link to="/">
-          <Button variant="outline" title="Muat ulang">
-            Muat ulang
-          </Button>
-        </Link>
-      </div>
-    </div>
-  );
-};
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -75,6 +48,43 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+export const ErrorBoundary = () => {
+  const error = useRouteError();
+
+  if (isRouteErrorResponse(error)) {
+    return (
+      <Container2xl className="flex h-svh flex-col">
+        <div className="grid h-full place-content-center gap-2 text-center text-neutral-400">
+          <ClipboardX className="mx-auto size-12" />
+          <p className="max-w-sm text-wrap text-center">{error.statusText}</p>
+        </div>
+      </Container2xl>
+    );
+  } else if (error instanceof Error) {
+    return (
+      <Container2xl className="flex h-svh flex-col">
+        <div className="grid h-full place-content-center gap-2 text-center text-neutral-400">
+          <HeartCrack className="mx-auto size-12" />
+          <p className="max-w-sm text-wrap text-center">{error.message}</p>
+        </div>
+      </Container2xl>
+    );
+  } else {
+    return (
+      <Container2xl className="flex h-svh flex-col">
+        <div className="grid h-full place-content-center gap-2 text-center text-neutral-400">
+          <HeartCrack className="mx-auto size-12" />
+          <p>Aplikasi Catatan Rusak</p>
+        </div>
+      </Container2xl>
+    );
+  }
+};
+
 export default function App() {
   return <Outlet />;
+}
+
+export function HydrateFallback() {
+  return <p>Loading...</p>;
 }
