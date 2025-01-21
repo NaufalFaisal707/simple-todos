@@ -11,29 +11,23 @@ export interface NoteDBSchema extends DBSchema {
   [db_collection]: {
     value: Todo;
     key: string;
-    indexes: { note_id: string };
+    indexes: { todo_id: string };
   };
 }
 
 export type Todo = {
   todo_id?: string;
   title?: string;
-  content?: TodoContent[];
+  isChecked?: boolean;
   created_at?: string | number | Date;
   update_at?: string | number | Date;
-};
-
-export type TodoContent = {
-  content_id?: string;
-  title?: string;
-  isChecked?: boolean;
 };
 
 async function idb() {
   return await openDB<NoteDBSchema>(db_name, 1, {
     upgrade(db) {
-      const store = db.createObjectStore(db_collection, { keyPath: "note_id" });
-      store.createIndex("note_id", "note_id");
+      const store = db.createObjectStore(db_collection, { keyPath: "todo_id" });
+      store.createIndex("todo_id", "todo_id");
     },
   });
 }
@@ -61,16 +55,24 @@ export async function getTodoById(todo_id: string) {
 
 export async function updateTodoById(
   todo_id: string,
-  { title, content }: { title?: string; content?: TodoContent[] },
+  { title, isChecked }: { title?: string; isChecked: boolean },
 ) {
   const update_at = new Date();
 
-  return (await idb()).put(db_collection, {
-    todo_id,
-    title,
-    content,
-    update_at,
-  });
+  const targetTodo = await getTodoById(todo_id);
+
+  if (targetTodo) {
+    return (await idb()).put(db_collection, {
+      ...{
+        ...targetTodo,
+        ...(title ? { title } : {}),
+        isChecked,
+      },
+      update_at,
+    });
+  }
+
+  throw "error updating todo id";
 }
 
 export async function deleteTodoById(todo_id: string) {
